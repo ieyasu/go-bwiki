@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
@@ -58,7 +59,12 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	if isPageName(page) {
 		content := []byte(r.FormValue("content"))
 		if !bytes.Equal(orig, content) { // changed, save new page
-			log.Printf("saving page %s\n", page)
+			// save old version
+			fout := openNextOldFile(page)
+			fout.Write(orig)
+			fout.Close()
+
+			// write new version
 			err := ioutil.WriteFile(pageFile(page), content, os.ModePerm)
 			if err == nil {
 			} else {
@@ -71,9 +77,21 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func openNextOldFile(page string) *os.File {
+	for i := 1; i < 10000; i++ {
+		oldPath := fmt.Sprintf("old/%s.%d", page, i)
+		fout, err := os.OpenFile(oldPath, os.O_CREATE | os.O_EXCL, os.ModePerm)
+		if err == nil {
+			return fout
+		}
+	}
+	panic("Ran out of old version numbers!")
+}
+
 func renderPage(w http.ResponseWriter, page string, title string) {
 	if bytes, err := readPage(page, w); err == nil {
 		pi := &pageInfo{Page: page, Title: title}
+		// XXX link WikiPages
 		pi.Content = string(blackfriday.MarkdownCommon(bytes))
 		if fi, err := os.Stat(pageFile(page)); err == nil {
 			pi.Mtime = fi.ModTime().Format(time.RFC1123)
