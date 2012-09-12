@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"github.com/russross/blackfriday"
 	"io/ioutil"
@@ -52,15 +53,21 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
-	if page := r.URL.Path[6:]; isPageName(page) {
-		content := r.FormValue("content")
-		err := ioutil.WriteFile(pageFile(page), []byte(content), os.ModePerm)
-		if err == nil {
-			http.Redirect(w, r, "/" + page, 303)
-		} else {
-			http.Error(w, "Error writing wiki page: " + err.Error(),
-				http.StatusInternalServerError)
+	page := r.URL.Path[6:]
+	orig, _ := readPage(page, w)
+	if isPageName(page) {
+		content := []byte(r.FormValue("content"))
+		if !bytes.Equal(orig, content) { // changed, save new page
+			log.Printf("saving page %s\n", page)
+			err := ioutil.WriteFile(pageFile(page), content, os.ModePerm)
+			if err == nil {
+			} else {
+				http.Error(w, "Error writing wiki page: " + err.Error(),
+					http.StatusInternalServerError)
+				return
+			}
 		}
+		http.Redirect(w, r, "/" + page, 303)
 	}
 }
 
