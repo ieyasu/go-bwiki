@@ -13,7 +13,7 @@
         Pages &ensp;
         | &ensp;
         Previous Versions &ensp;
-        Edit Page
+        <a href="/edit/{{.Page}}">Edit Page</a>
       </span>
       <form class="search" action="/search">
         Search: <input type="search" class="text" name="q" />
@@ -27,12 +27,12 @@
     </div>
     <footer>
       <hr />
-      Last edited: ...
+      Last edited: {{.Mtime}}
 
       <span id="bottomlinks">
         Previous Versions
         &ensp;
-        Edit Page
+        <a href="/edit/{{.Page}}">Edit Page</a>
       </span>
 
       <form class="search" action="/search">

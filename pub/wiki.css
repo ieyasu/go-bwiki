@@ -6,6 +6,11 @@ form.search {
    width: 15em;
 }
 
+#preview {
+   margin: 1em;
+   margin-top: 3em;
+}
+
 #bottomlinks {
    float: right;
 }
