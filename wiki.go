@@ -1,10 +1,11 @@
 package main
 
 import (
+	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"html/template"
+	"text/template"
 )
 
 type pageInfo struct {
@@ -23,10 +24,14 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	pi := &pageInfo{Title: "BWiki"}
-	content, err := ioutil.ReadFile("pages/" + "index")
+	renderPage(w, "index", "BWiki")
+}
+
+func renderPage(w http.ResponseWriter, page string, title string) {
+	pi := &pageInfo{Title: title}
+	bytes, err := ioutil.ReadFile("pages/" + page)
 	if err == nil {
-		pi.Content = string(content)
+		pi.Content = string(blackfriday.MarkdownCommon(bytes))
 		render(w, "index.html", pi)
 	} else {
 		http.Error(w, "Page not found", http.StatusNotFound)
@@ -34,6 +39,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func render(w http.ResponseWriter, templateName string, data interface{}) {
+	// XXX remove re-parsing line after done with inital dev
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 	err := views.ExecuteTemplate(w, templateName, data)
 	if err != nil {
