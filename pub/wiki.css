@@ -1,0 +1,11 @@
+body {
+}
+
+form.search {
+   margin-top: 0.5em;
+   width: 15em;
+}
+
+#bottomlinks {
+   float: right;
+}

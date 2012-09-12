@@ -3,32 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <title>BWiki</title>
-    <link rel="stylesheet" href="/wiki.css" />
+    <link rel="stylesheet" href="/pub/wiki.css" />
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
   </head>
   <body>
     <header>
-      Home
-      Changes
-      Pages
-      Deleted
-      Images
-
-      -search-
-
+      <span>
+        <a href="/">Home</a> &ensp;
+        Pages &ensp;
+        | &ensp;
+        Previous Versions &ensp;
+        Edit Page
+      </span>
+      <form class="search" action="/search">
+        Search: <input type="search" class="text" name="q" />
+      </form>
       <hr />
     </header>
     <div class="content">
+      <h1>BWiki</h1>
+
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam nec egestas sapien. Maecenas blandit imperdiet dignissim. Nulla bibendum porttitor magna at lacinia. Vivamus at risus vel enim fringilla vestibulum. Curabitur tortor justo, suscipit faucibus cursus sit amet, cursus ac nulla. Nulla cursus convallis libero aliquam hendrerit. Etiam eget lobortis est. Pellentesque ipsum dui, vulputate a dictum nec, ultrices ut ante. Integer tincidunt felis eget odio aliquam ornare. Nullam a lectus lectus. Sed dignissim, dolor in rutrum gravida, sapien diam luctus justo, ac venenatis diam lacus ut eros. Quisque semper mattis sapien non condimentum. Cras cursus tincidunt interdum.
+      </p>
+      <p>
+        Duis a mi eu nunc volutpat dignissim nec nec purus. Praesent eget orci eu nunc iaculis dapibus. Suspendisse commodo mauris vulputate nibh varius malesuada. Morbi laoreet tempus mauris et luctus. Duis tellus mi, porttitor nec sagittis et, dignissim quis elit. Duis sed lectus at tortor vulputate cursus. Ut a tortor sed ligula aliquet iaculis at ut mi. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. In scelerisque purus eros. Vestibulum tellus arcu, sodales quis dapibus ut, vulputate quis velit. Nulla eros risus, ullamcorper non lobortis nec, interdum vulputate enim.
+      </p>
+      <p>
+        Cras eu arcu non sem rutrum interdum. Sed volutpat, dolor non pulvinar laoreet, nisi ante volutpat dolor, eu tincidunt elit leo non nisi. Mauris dolor nibh, consequat ut venenatis a, molestie at dui. Duis vel tortor non odio vulputate mollis sed eu nisl. Mauris eleifend risus condimentum felis faucibus molestie. Integer convallis adipiscing arcu, quis accumsan metus adipiscing sed. Suspendisse sem dui, egestas ac vehicula eu, mattis eu justo. Nam vitae mauris augue. Fusce vitae nunc ipsum. Cras lobortis felis eu justo ultrices varius. Donec tristique vehicula vehicula. Sed id nibh tortor. In eu facilisis nunc.
+      </p>
     </div>
     <footer>
       <hr />
       Last edited: ...
 
-      Previous Versions
-      Link Backs
-      Edit Page
+      <span id="bottomlinks">
+        Previous Versions
+        &ensp;
+        Edit Page
+      </span>
 
-      -search-
+      <form class="search" action="/search">
+        Search: <input type="search" class="text" name="q" />
+      </form>
     </footer>
   </body>
 </html>
