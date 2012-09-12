@@ -1,10 +1,16 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"net/http"
 	"html/template"
 )
+
+type pageInfo struct {
+	Title string
+	Content string
+}
 
 var views *template.Template
 
@@ -17,7 +23,14 @@ func main() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", nil)
+	pi := &pageInfo{Title: "BWiki"}
+	content, err := ioutil.ReadFile("pages/" + "index")
+	if err == nil {
+		pi.Content = string(content)
+		render(w, "index.html", pi)
+	} else {
+		http.Error(w, "Page not found", http.StatusNotFound)
+	}
 }
 
 func render(w http.ResponseWriter, templateName string, data interface{}) {
