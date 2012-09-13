@@ -185,43 +185,56 @@ var wikiWordPat *regexp.Regexp = regexp.MustCompile(
 	"\\b(?:[A-Z](?:[0-9a-z]*[a-z][0-9a-z]*)?){2,}\\b")
 
 func linkWikiWords(content []byte) []byte {
-	return wikiWordPat.ReplaceAllFunc(content, func(m []byte) []byte {
-		return []byte("<a href=\"/" + string(m) + "\">" + string(m) + "</a>")
+	return wikiWordPat.ReplaceAllFunc(content, func(word []byte) []byte {
+		if fileExists(pageFile(string(word), -1)) {
+			return []byte(linkWikiPage(string(word)))
+		}
+		sing, plu := splitPlural(string(word))
+		if fileExists(pageFile(sing, -1)) {
+			return []byte(linkWikiPage(string(sing)) + plu)
+		}
+		link := sing + "<a href=\"/edit/" + sing + "\">?</a>"
+		if len(plu) > 0 {
+			link += plu + "<a href=\"/edit/" + string(word) + "\">?</a>"
+		}
+		return []byte(link)
 	})
-	// for each wiki word:
-	//   if page file exists, link it
-	//   else split plural
-	//     if that page file exists, link it
-	//     else link to edit
 }
+
+func linkWikiPage(page string) string {
+	return "<a href=\"/" + page + "\">" + page + "</a>"
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+var endES  *regexp.Regexp = regexp.MustCompile("(?i)\\w(?:s|z|ch|sh|x)es$")
+var endOS  *regexp.Regexp = regexp.MustCompile("(?i)\\wos$")
+var endOES *regexp.Regexp = regexp.MustCompile("(?i)\\woes$")
+var endIES *regexp.Regexp = regexp.MustCompile("(?i)\\wies$")
+var endS   *regexp.Regexp = regexp.MustCompile("(?i)\\ws$")
 
 func splitPlural(word string) (string, string) {
-	return "", ""
+	var i int
+	if endES.MatchString(word) {
+		i = -2 // end in s, z, ch, sh, x -> remove es
+	} else if endOS.MatchString(word) {
+		i = -1 // end in os -> o
+	} else if endOES.MatchString(word) {
+		i = -2 // end in oes -> o
+	} else if endIES.MatchString(word) {
+		i = -3 // end in ies -> y
+	} else if endS.MatchString(word) {
+		i = -1 // simple plural -> remove s
+	} else {
+		return word, "" // not a plural
+	}
+	n := len(word)
+	i += n
+	return word[0:i], word[i:]
 }
-
-/*
- # Inspects the end of the string to see if it has a recognized plural
-  # word form and either returns the word split at the plural suffix
-  # boundary or just [self, nil].
-  def split_plural
-    i =
-      case self
-      when /\w(?:s|z|ch|sh|x)es$/i
-        -2 # end in s, z, ch, sh, x -> remove 'es'
-      when /\wos$/i
-        -1 # end in os -> o
-      when /\woes$/i
-        -2 # end in oes -> o
-      when /\wies$/i
-        -3 # end in 'ies' -> 'y'
-      when /\ws$/i
-        -1 # simple plural -> remove ending 's'
-      else
-        return self, nil # not a plural
-      end
-    return self[0...i], self[i..-1]
-  end
-*/
 
 func pageNotFound(w http.ResponseWriter) {
 	http.Error(w, "Wiki page not found", http.StatusNotFound)
