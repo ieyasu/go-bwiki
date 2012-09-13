@@ -17,6 +17,7 @@ import (
 
 type pageInfo struct {
 	Page    string
+	Ver     string
 	Title   string
 	Content string
 	Mtime   string
@@ -59,7 +60,7 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	content := r.FormValue("content")
-	md := blackfriday.MarkdownCommon([]byte(content))
+	md := blackfriday.MarkdownCommon(linkWikiWords([]byte(content)))
 	w.Write(md)
 }
 
@@ -167,8 +168,10 @@ func shortDate(t time.Time) string {
 func renderPage(w http.ResponseWriter, page string, version int, title string) {
 	if bytes, err := readPage(page, version, w); err == nil {
 		pi := &pageInfo{Page: page, Title: title}
-		// XXX link WikiPages
-		pi.Content = string(blackfriday.MarkdownCommon(bytes))
+		if version > 0 {
+			pi.Ver = fmt.Sprintf("?ver=%d", version)
+		}
+		pi.Content = string(blackfriday.MarkdownCommon(linkWikiWords(bytes)))
 		if fi, err := os.Stat(pageFile(page, version)); err == nil {
 			pi.Mtime = fi.ModTime().Format(time.RFC1123)
 		}
@@ -177,6 +180,48 @@ func renderPage(w http.ResponseWriter, page string, version int, title string) {
 		pageNotFound(w)
 	}
 }
+
+var wikiWordPat *regexp.Regexp = regexp.MustCompile(
+	"\\b(?:[A-Z](?:[0-9a-z]*[a-z][0-9a-z]*)?){2,}\\b")
+
+func linkWikiWords(content []byte) []byte {
+	return wikiWordPat.ReplaceAllFunc(content, func(m []byte) []byte {
+		return []byte("<a href=\"/" + string(m) + "\">" + string(m) + "</a>")
+	})
+	// for each wiki word:
+	//   if page file exists, link it
+	//   else split plural
+	//     if that page file exists, link it
+	//     else link to edit
+}
+
+func splitPlural(word string) (string, string) {
+	return "", ""
+}
+
+/*
+ # Inspects the end of the string to see if it has a recognized plural
+  # word form and either returns the word split at the plural suffix
+  # boundary or just [self, nil].
+  def split_plural
+    i =
+      case self
+      when /\w(?:s|z|ch|sh|x)es$/i
+        -2 # end in s, z, ch, sh, x -> remove 'es'
+      when /\wos$/i
+        -1 # end in os -> o
+      when /\woes$/i
+        -2 # end in oes -> o
+      when /\wies$/i
+        -3 # end in 'ies' -> 'y'
+      when /\ws$/i
+        -1 # simple plural -> remove ending 's'
+      else
+        return self, nil # not a plural
+      end
+    return self[0...i], self[i..-1]
+  end
+*/
 
 func pageNotFound(w http.ResponseWriter) {
 	http.Error(w, "Wiki page not found", http.StatusNotFound)
