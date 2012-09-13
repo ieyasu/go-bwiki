@@ -9,10 +9,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -36,6 +38,7 @@ func main() {
 	http.HandleFunc("/save/", saveHandler)
 	http.HandleFunc("/pages", pagesHandler)
 	http.HandleFunc("/versions/", versionsHandler)
+	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
 	log.Fatal(http.ListenAndServe("0.0.0.0:8081", nil))
@@ -188,6 +191,68 @@ func fileMtime(path string) string {
 
 func shortDate(t time.Time) string {
 	return fmt.Sprintf("%s %d, %d", t.Month().String()[0:3], t.Day(), t.Year())
+}
+
+type hit struct {
+	Page  string
+	Count int
+	Hits string
+}
+
+type hitSlice []*hit
+
+func (h hitSlice) Len() int {
+	return len(h)
+}
+
+func (h hitSlice) Less(i, j int) bool {
+	return h[i].Count > h[j].Count
+}
+
+func (h hitSlice) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+type search struct {
+	Q string
+	Hits hitSlice
+}
+
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.FormValue("q")
+	res := &search{Q: q}
+	argv := []string{"-ci"}
+	for _, aq := range strings.Fields(q) {
+		argv = append(argv, "-e", aq)
+	}
+	pages, _ := filepath.Glob("pages/[a-zA-Z]*")
+	argv = append(argv, pages...)
+	out, err := exec.Command("grep", argv...).CombinedOutput()
+	if err != nil {
+		fmt.Printf("error greping: %s\n", err.Error())
+	}
+
+	// parse grep output--lines of "pages/<page>:<hit count>"
+	hits := make(map[string]int)
+	for _, line := range strings.Split(string(out), "\n") {
+		if ary1 := strings.SplitN(line, "/", 2); len(ary1) == 2 {
+			if ary := strings.SplitN(ary1[1], ":", 2); len(ary) == 2 {
+				page := ary[0]
+				if count, _ := strconv.Atoi(ary[1]); count > 0 {
+					hits[page] = hits[page] + count
+				}
+			}
+		}
+	}
+	for page, count := range hits {
+		n := count
+		if count > 50 {
+			n = 50
+		}
+		res.Hits = append(res.Hits, &hit{Page: page, Count: count, Hits: strings.Repeat("▎", n)})
+	}
+	sort.Sort(res.Hits)
+	render(w, "search.html", res)
 }
 
 func renderPage(w http.ResponseWriter, page string, version int, title string) {
