@@ -9,7 +9,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"text/template"
 	"time"
@@ -32,6 +34,7 @@ func main() {
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/preview", previewHandler)
 	http.HandleFunc("/save/", saveHandler)
+	http.HandleFunc("/pages", pagesHandler)
 	http.HandleFunc("/versions/", versionsHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
@@ -118,6 +121,18 @@ func openNextOldFile(page string) *os.File {
 		}
 	}
 	panic("Ran out of old version numbers!")
+}
+
+func pagesHandler(w http.ResponseWriter, r *http.Request) {
+	list, err := filepath.Glob("pages/[a-zA-Z]*")
+	if err != nil {
+		panic(err)
+	}
+	for i, s := range list {
+		list[i] = s[6:]
+	}
+	sort.Strings(list)
+	render(w, "pages.html", list)
 }
 
 type pageVersion struct {
