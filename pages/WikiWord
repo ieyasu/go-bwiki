@@ -1,0 +1,28 @@
+WikiWords are the way you name pages in this wiki.  They will be automatically linked so someone reading the Wiki can click on the WikiWord and go to that page.  If there is a linked question mark (?) next to the WikiWord, it has not been created yet.  Click on the question mark and you will be taken to the page editor to create it.
+
+These are wiki words:
+
+- WikiWord
+- WikiW0rd
+- WikiWord3
+
+Serial numbers, not so much:
+
+- B9A30316207
+- E600F9957Dd0p0
+
+Limited consecutive caps should be linked:
+
+- DvorakInXWindows
+- AltInOSX
+- OSXTerminal
+- NASA
+- BWiki
+
+None of these are WikiWords:
+
+- word
+- Word
+- weIRdcaps
+- ForwardX11Trusted
+- Either/Or

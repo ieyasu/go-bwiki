@@ -44,18 +44,28 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	page := r.URL.Path[1:]
 	v := verParam(r)
-	renderPage(w, "index", v, "BWiki")
+	if len(page) == 0{
+		renderPage(w, "home", v, "BWiki")
+	} else if isPageName(page) {
+		if page == "home" {
+			http.Redirect(w, r, "/", 303)
+		} else {
+			renderPage(w, page, v, page)
+		}
+	} else {
+		invalidPageName(w)
+	}
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request) {
 	v := verParam(r)
 	page := r.URL.Path[6:]
-	if bytes, _ := readPage(page, v, w); bytes != nil {
-		pi := &pageInfo{Page: page}
-		pi.Content = string(bytes)
-		render(w, "edit.html", pi)
-	}
+	bytes, _ := readPage(page, v, w)
+	pi := &pageInfo{Page: page}
+	pi.Content = string(bytes)
+	render(w, "edit.html", pi)
 }
 
 func previewHandler(w http.ResponseWriter, r *http.Request) {
