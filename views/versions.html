@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>{{.Title}} - BWiki</title>
+    <title>Versions of {{.Page}} - BWiki</title>
     <link rel="stylesheet" href="/pub/wiki.css" />
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js" type="text/javascript"></script>
   </head>
@@ -12,7 +12,6 @@
         <a href="/">Home</a> &ensp;
         Pages &ensp;
         | &ensp;
-        <a href="/versions/{{.Page}}">Old Versions</a> &ensp;
         <a href="/edit/{{.Page}}">Edit Page</a>
       </span>
       <form class="search" action="/search">
@@ -21,23 +20,15 @@
       <hr />
     </header>
     <div class="content">
-      <h1>{{.Title}}</h1>
+      <h1>Versions of {{.Page}}</h1>
 
-{{.Content}}
+      {{$page := .Page}}
+      <ul>
+        <li>Current Version ({{.Mtime}}) &emsp;<a href="/{{$page}}">view</a> &emsp;<a href="/edit/{{$page}}">edit</a></li>
+      {{range .Versions}}
+        <li>Version {{.Num}} ({{.Mtime}}) &emsp;<a href="/{{$page}}?ver={{.Num}}">view</a> &emsp;<a href="/edit/{{$page}}?ver={{.Num}}">edit</a></li>
+      {{end}}
+      </ul>
     </div>
-    <footer>
-      <hr />
-      Last edited: {{.Mtime}}
-
-      <span id="bottomlinks">
-        <a href="/versions/{{.Page}}">Old Versions</a>
-        &ensp;
-        <a href="/edit/{{.Page}}">Edit Page</a>
-      </span>
-
-      <form class="search" action="/search">
-        Search: <input type="search" class="text" name="q" />
-      </form>
-    </footer>
   </body>
 </html>
