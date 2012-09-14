@@ -25,6 +25,7 @@ type pageInfo struct {
 	Title   string
 	Content string
 	Mtime   string
+	IsHome  bool
 }
 
 var views *template.Template
@@ -33,6 +34,7 @@ func main() {
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 
 	http.HandleFunc("/", rootHandler)
+	http.HandleFunc("/delete/", deleteHandler)
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/preview", previewHandler)
 	http.HandleFunc("/save/", saveHandler)
@@ -65,11 +67,39 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "POST only!", http.StatusMethodNotAllowed)
+		return
+	}
+	page := r.URL.Path[8:]
+	if isPageName(page) && fileExists(pageFile(page, -1)) {
+		if page == "home" {
+			http.Error(w, "You mustn't delete the home page!", http.StatusBadRequest)
+			return
+		}
+		deletePage(page)
+		w.Write([]byte("/"))
+	} else {
+		invalidPageName(w)
+	}
+}
+
+func deletePage(page string) {
+	os.Rename("pages/" + page, "deleted/" + page)
+	if list, _ := filepath.Glob("old/" + page + ".*"); list != nil {
+		for _, old := range list {
+			newPg := filepath.Join("deleted", filepath.Base(old))
+			os.Rename(old, newPg)
+		}
+	}
+}
+
 func editHandler(w http.ResponseWriter, r *http.Request) {
 	v := verParam(r)
 	page := r.URL.Path[6:]
 	bytes, _ := readPage(page, v, w)
-	pi := &pageInfo{Page: page}
+	pi := &pageInfo{Page: page, IsHome: (page == "home")}
 	pi.Content = string(bytes)
 	render(w, "edit.html", pi)
 }
