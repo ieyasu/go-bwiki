@@ -14,6 +14,17 @@
         });
         return false;
       }
+      var helpVisible = false;
+      function toggleHelp() {
+        if (helpVisible) {
+          $("#help").css("display", "none");
+          $("#toggle").text("Formatting Help");
+        } else {
+          $("#help").css("display", "block");
+          $("#toggle").text("Hide Help");
+        }
+        helpVisible = !helpVisible;
+      }
     </script>
   </head>
   <body>
@@ -34,15 +45,120 @@
 
       <p>Delete this page</p>
 
-      Edit Help<br />
-
       <form id="editor" action="/save/{{.Page}}" method="POST">
         <textarea id="content" name="content" rows="36" cols="90">{{.Content}}</textarea><br />
-        <input type="submit" value="Preview {{.Page}}" onClick="return preview()" />
+        <div class="beloweditor">
+          <input type="submit" value="Preview" onClick="return preview()" />
+          <a id="toggle" href="javascript:toggleHelp()">Formatting Help</a>
+        </div>
+        <div id="help" style="display: none">
+          <table>
+            <tr>
+              <th>You type</th>
+              <th>You see</th>
+              <th>You type</th>
+              <th>You see</th>
+            </tr>
+            <tr>
+              <td>*italics* <i>or</i> _italics_</td>
+              <td><i>italics</i></td>
+              <td rowspan="3"><pre>First Level Header
+==================</pre></td>
+              <td rowspan="3"><h1>First Level Header</h1></td>
+            </tr>
+            <tr>
+              <td>**bold** <i>or</i> __bold__</td>
+              <td><strong>bold</strong></td>
+            </tr>
+            <tr>
+              <td>~~strikethrough~~</td>
+              <td><strike>strikethrough</strike></td>
+            </tr>
+            <tr>
+              <td><pre>- Bulleted
+- List</pre> </td>
+              <td><ul><li>Bulleted</li><li>List</li></ul></td>
+              <td><pre>Second Level Header
+-------------------</pre></td>
+              <td><h2>Second Level Header</h2></td>
+            </tr>
+            <tr>
+              <td><pre>1. Numbered
+2. List</pre></td>
+              <td><ol><li>Numbered</li><li>List</li></ol></td>
+              <td>### Header 3</td>
+              <td><h3>Header 3</h3></td>
+            </tr>
+            <tr>
+              <td>&lt;http://example.com&gt;</td>
+              <td><a href="http://example.com">http://example.com</a></td>
+              <td rowspan="2">###### Header 6</td>
+              <td rowspan="2"><h6>Header 6</h6></td>
+            </tr>
+            <tr>
+              <td>[link text](http://example.com)</td>
+              <td><a href="http://example.com">link text</a></td>
+            </tr>
+            <tr>
+              <td>![alt text](/pub/image.jpg "Title")</td>
+              <td>-image-</td>
+              <td>WikiWord</td>
+              <td><a href="/WikiWord">WikiWord</a> <i>or</i> WikiWord<a href="/edit/WikiWord">?</a></td>
+            </tr>
+            <tr>
+              <td><pre>| item | value |
+|------|------:|
+| AA Battery | $3 |
+| Marker | $2.50 |
+| Clothespin | $.50 |</pre></td>
+              <td>
+                <table>
+                  <tr>
+                    <td>item</td>
+                    <td>value</td>
+                  </tr>
+                  <tr>
+                    <td>AA Battery</td>
+                    <td align="right">$3</td>
+                  </tr>
+                  <tr>
+                    <td>Marker</td>
+                    <td align="right">$2.50</td>
+                  </tr>
+                  <tr>
+                    <td>Clothespin</td>
+                    <td align="right">$.50</td>
+                  </tr>
+                </table>
+              </td>
+              <td><pre>|Column 1 | Column 2|
+|---------|---------|
+|Thing a  | Value 1 |
+|Thing b  | Value 2 |</pre></td>
+              <td>
+                <table>
+                  <tr>
+                    <td>Column 1</td>
+                    <td>Column 2</td>
+                  </tr>
+                  <tr>
+                    <td>Thing a</td>
+                    <td>Value 1</td>
+                  </tr>
+                  <tr>
+                    <td>Thing b</td>
+                    <td>Value 2</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          <a href="http://daringfireball.net/projects/markdown/syntax" target="#">Full Markdown Reference</a>
+        </div>
 
         <div id="preview_outer" style="visibility: hidden">
           <div id="preview"></div>
-          <input type="submit" value="Save {{.Page}}" />
+          <input type="submit" value="Save" />
         </div>
       </form>
     </div>

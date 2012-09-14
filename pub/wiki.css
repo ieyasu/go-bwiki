@@ -14,3 +14,28 @@ form.search {
 #bottomlinks {
    float: right;
 }
+
+table {
+   border-collapse: collapse;
+   margin-top: 1em;
+   margin-bottom: 1em;
+}
+
+th {
+   border: 1px solid lightgray;
+   text-align: left;
+   padding: 1ex;
+}
+
+td {
+   border: 1px solid lightgray;
+   padding: 1ex;
+}
+
+div.beloweditor {
+   width: 46em;
+}
+
+a#toggle {
+   float: right;
+}
