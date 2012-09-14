@@ -54,7 +54,7 @@ func faviconHandler(w http.ResponseWriter, r *http.Request) {
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	page := r.URL.Path[1:]
 	v := verParam(r)
-	if len(page) == 0{
+	if len(page) == 0 {
 		renderPage(w, "home", v, "BWiki")
 	} else if isPageName(page) {
 		if page == "home" {
@@ -86,7 +86,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deletePage(page string) {
-	os.Rename("pages/" + page, "deleted/" + page)
+	os.Rename("pages/"+page, "deleted/"+page)
 	if list, _ := filepath.Glob("old/" + page + ".*"); list != nil {
 		for _, old := range list {
 			newPg := filepath.Join("deleted", filepath.Base(old))
@@ -126,12 +126,12 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 			err := ioutil.WriteFile(pageFile(page, -1), content, 0644)
 			if err == nil {
 			} else {
-				http.Error(w, "Error writing wiki page: " + err.Error(),
+				http.Error(w, "Error writing wiki page: "+err.Error(),
 					http.StatusInternalServerError)
 				return
 			}
 		}
-		http.Redirect(w, r, "/" + page, 303)
+		http.Redirect(w, r, "/"+page, 303)
 	}
 }
 
@@ -148,7 +148,7 @@ func verParam(r *http.Request) int {
 func openNextOldFile(page string) *os.File {
 	for i := 1; i < 10000; i++ {
 		oldPath := pageFile(page, i)
-		fout, err := os.OpenFile(oldPath, os.O_WRONLY | os.O_CREATE | os.O_EXCL, 0644)
+		fout, err := os.OpenFile(oldPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 		if err == nil {
 			return fout
 		}
@@ -169,13 +169,13 @@ func pagesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type pageVersion struct {
-	Num int
+	Num   int
 	Mtime string
 }
 
 type versionInfo struct {
-	Page string
-	Mtime string
+	Page     string
+	Mtime    string
 	Versions []*pageVersion
 }
 
@@ -204,7 +204,7 @@ func listPageVersions(page string) []*pageVersion {
 		}
 		ary = append(ary, &pageVersion{Num: i, Mtime: m})
 	}
-	for i, j := 0, len(ary) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(ary)-1; i < j; i, j = i+1, j-1 {
 		ary[i], ary[j] = ary[j], ary[i]
 	}
 	return ary
@@ -226,7 +226,7 @@ func shortDate(t time.Time) string {
 type hit struct {
 	Page  string
 	Count int
-	Hits string
+	Hits  string
 }
 
 type hitSlice []*hit
@@ -244,7 +244,7 @@ func (h hitSlice) Swap(i, j int) {
 }
 
 type search struct {
-	Q string
+	Q    string
 	Hits hitSlice
 }
 
@@ -330,11 +330,11 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-var endES  *regexp.Regexp = regexp.MustCompile("(?i)\\w(?:s|z|ch|sh|x)es$")
-var endOS  *regexp.Regexp = regexp.MustCompile("(?i)\\wos$")
+var endES *regexp.Regexp = regexp.MustCompile("(?i)\\w(?:s|z|ch|sh|x)es$")
+var endOS *regexp.Regexp = regexp.MustCompile("(?i)\\wos$")
 var endOES *regexp.Regexp = regexp.MustCompile("(?i)\\woes$")
 var endIES *regexp.Regexp = regexp.MustCompile("(?i)\\wies$")
-var endS   *regexp.Regexp = regexp.MustCompile("(?i)\\ws$")
+var endS *regexp.Regexp = regexp.MustCompile("(?i)\\ws$")
 
 func splitPlural(word string) (string, string) {
 	var i int
