@@ -111,16 +111,16 @@ func previewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
-	v := verParam(r)
 	page := r.URL.Path[6:]
-	orig, _ := readPage(page, v, w)
+	orig, err := readPage(page, -1, w)
 	if isPageName(page) {
 		content := []byte(r.FormValue("content"))
-		if !bytes.Equal(orig, content) { // changed, save new page
-			// save old version
-			fout := openNextOldFile(page)
-			fout.Write(orig)
-			fout.Close()
+		if err != nil || !bytes.Equal(orig, content) { // changed, save new page
+			if err == nil { // save old version
+				fout := openNextOldFile(page)
+				fout.Write(orig)
+				fout.Close()
+			}
 
 			// write new version
 			err := ioutil.WriteFile(pageFile(page, -1), content, 0644)
