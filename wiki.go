@@ -92,7 +92,7 @@ func deletePage(page string) {
 	if fileExists(dp) { // rename deleted/<page> and renumber old pages
 		i := nextFileNum(dp)
 		os.Rename(dp, fmt.Sprintf("%s.%d", dp, i))
-		if list, _ := filepath.Glob("old/"+page+".*"); list != nil {
+		if list, _ := filepath.Glob("old/" + page + ".*"); list != nil {
 			sort.Strings(list)
 			for _, old := range list {
 				i++
@@ -100,7 +100,7 @@ func deletePage(page string) {
 			}
 		}
 	} else {
-		mvGlob(page + ".*", "old/", "deleted/")
+		mvGlob(page+".*", "old/", "deleted/")
 	}
 	os.Rename("pages/"+page, dp)
 }
@@ -111,7 +111,7 @@ func restoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := r.URL.Path[9:]
-	if isPageName(page) && fileExists("deleted/" + page) {
+	if isPageName(page) && fileExists("deleted/"+page) {
 		redirTo := restorePage(page)
 		w.Write([]byte(redirTo))
 	} else {
@@ -132,7 +132,7 @@ func restorePage(page string) string {
 		preExistVers := sortedVersions("old/" + page)
 		for _, ver := range preExistVers {
 			old := fmt.Sprintf("old/%s.%d", page, ver)
-			newname := fmt.Sprintf("old/%s.%d", page, ver + n)
+			newname := fmt.Sprintf("old/%s.%d", page, ver+n)
 			os.Rename(old, newname)
 		}
 	}
@@ -146,10 +146,10 @@ func restorePage(page string) string {
 	}
 	// 4. rename deleted page as appropriate and redirect
 	if pageAlreadyThere {
-		os.Rename("deleted/" + page, fmt.Sprintf("old/%s.%d", page, n))
+		os.Rename("deleted/"+page, fmt.Sprintf("old/%s.%d", page, n))
 		return fmt.Sprintf("/edit/%s?ver=%d", page, n)
 	}
-	os.Rename("deleted/" + page, "pages/" + page)
+	os.Rename("deleted/"+page, "pages/"+page)
 	return "/" + page
 }
 
@@ -169,7 +169,7 @@ func sortedVersions(prefix string) []int {
 func mvGlob(pat, fromDir, toDir string) {
 	if list, _ := filepath.Glob(fromDir + pat); list != nil {
 		for _, old := range list {
-			os.Rename(old, toDir + filepath.Base(old))
+			os.Rename(old, toDir+filepath.Base(old))
 		}
 	}
 }
@@ -499,7 +499,6 @@ func render(w http.ResponseWriter, templateName string, data interface{}) {
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 	err := views.ExecuteTemplate(w, templateName, data)
 	if err != nil {
-fmt.Printf("error != nil executing template %s on %v\n", templateName, data)
 		serverError(w, err)
 	}
 }
