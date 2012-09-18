@@ -40,6 +40,8 @@ func main() {
 	panicIni(err)
 	wikiName, err = c.String("wiki", "name")
 	panicIni(err)
+	servAddr, err := c.String("wiki", "serv_addr")
+	panicIni(err)
 
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 
@@ -55,7 +57,7 @@ func main() {
 	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
-	log.Fatal(http.ListenAndServe("0.0.0.0:8081", nil))
+	log.Fatal(http.ListenAndServe(servAddr, nil))
 }
 
 func panicIni(err error) {
