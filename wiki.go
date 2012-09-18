@@ -60,7 +60,13 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		renderPage(w, "home", v, "BWiki")
 	} else if isPageName(page) {
 		if page == "home" {
-			http.Redirect(w, r, "/", 302)
+			var u string
+			if v > 0 {
+				u = fmt.Sprintf("/?ver=%d", v)
+			} else {
+				u = "/"
+			}
+			http.Redirect(w, r, u, 302)
 		} else {
 			renderPage(w, page, v, page)
 		}
