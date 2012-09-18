@@ -35,10 +35,12 @@ func main() {
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/delete/", deleteHandler)
+	http.HandleFunc("/restore/", restoreHandler)
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/preview", previewHandler)
 	http.HandleFunc("/save/", saveHandler)
 	http.HandleFunc("/pages", pagesHandler)
+	http.HandleFunc("/deleted", deletedHandler)
 	http.HandleFunc("/versions/", versionsHandler)
 	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
@@ -58,7 +60,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 		renderPage(w, "home", v, "BWiki")
 	} else if isPageName(page) {
 		if page == "home" {
-			http.Redirect(w, r, "/", 303)
+			http.Redirect(w, r, "/", 302)
 		} else {
 			renderPage(w, page, v, page)
 		}
@@ -86,11 +88,88 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func deletePage(page string) {
-	os.Rename("pages/"+page, "deleted/"+page)
-	if list, _ := filepath.Glob("old/" + page + ".*"); list != nil {
+	dp := "deleted/" + page
+	if fileExists(dp) { // rename deleted/<page> and renumber old pages
+		i := nextFileNum(dp)
+		os.Rename(dp, fmt.Sprintf("%s.%d", dp, i))
+		if list, _ := filepath.Glob("old/"+page+".*"); list != nil {
+			sort.Strings(list)
+			for _, old := range list {
+				i++
+				os.Rename(old, fmt.Sprintf("deleted/%s.%d", page, i))
+			}
+		}
+	} else {
+		mvGlob(page + ".*", "old/", "deleted/")
+	}
+	os.Rename("pages/"+page, dp)
+}
+
+func restoreHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "POST only!", http.StatusMethodNotAllowed)
+		return
+	}
+	page := r.URL.Path[9:]
+	if isPageName(page) && fileExists("deleted/" + page) {
+		redirTo := restorePage(page)
+		w.Write([]byte(redirTo))
+	} else {
+		invalidPageName(w)
+	}
+}
+
+func restorePage(page string) string {
+	// 1. count # deleted versions
+	deletedVers := sortedVersions("deleted/" + page)
+	n := len(deletedVers)
+	pageAlreadyThere := fileExists(pageFile(page, -1))
+	if pageAlreadyThere {
+		n++
+	}
+	// 2. rename pre-existing old versions ahead of deleted version count
+	if n > 0 {
+		preExistVers := sortedVersions("old/" + page)
+		for _, ver := range preExistVers {
+			old := fmt.Sprintf("old/%s.%d", page, ver)
+			newname := fmt.Sprintf("old/%s.%d", page, ver + n)
+			os.Rename(old, newname)
+		}
+	}
+	// 3. rename deleteds to old.(1:n-1)
+	i := 1
+	for _, ver := range deletedVers {
+		old := fmt.Sprintf("deleted/%s.%d", page, ver)
+		newname := fmt.Sprintf("old/%s.%d", page, i)
+		os.Rename(old, newname)
+		i++
+	}
+	// 4. rename deleted page as appropriate and redirect
+	if pageAlreadyThere {
+		os.Rename("deleted/" + page, fmt.Sprintf("old/%s.%d", page, n))
+		return fmt.Sprintf("/edit/%s?ver=%d", page, n)
+	}
+	os.Rename("deleted/" + page, "pages/" + page)
+	return "/" + page
+}
+
+func sortedVersions(prefix string) []int {
+	var vers []int
+	if list, _ := filepath.Glob(prefix + ".*"); list != nil {
+		vers = make([]int, len(list))
+		for i, p := range list {
+			j := strings.IndexRune(p, '.') + 1
+			vers[i], _ = strconv.Atoi(p[j:])
+		}
+		sort.Ints(vers)
+	}
+	return vers
+}
+
+func mvGlob(pat, fromDir, toDir string) {
+	if list, _ := filepath.Glob(fromDir + pat); list != nil {
 		for _, old := range list {
-			newPg := filepath.Join("deleted", filepath.Base(old))
-			os.Rename(old, newPg)
+			os.Rename(old, toDir + filepath.Base(old))
 		}
 	}
 }
@@ -131,7 +210,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		http.Redirect(w, r, "/"+page, 303)
+		http.Redirect(w, r, "/"+page, 302)
 	}
 }
 
@@ -146,14 +225,22 @@ func verParam(r *http.Request) int {
 }
 
 func openNextOldFile(page string) *os.File {
+	i := nextFileNum("old/" + page)
+	fout, err := os.OpenFile(pageFile(page, i), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		panic(err)
+	}
+	return fout
+}
+
+func nextFileNum(prefix string) int {
 	for i := 1; i < 10000; i++ {
-		oldPath := pageFile(page, i)
-		fout, err := os.OpenFile(oldPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-		if err == nil {
-			return fout
+		_, err := os.Stat(fmt.Sprintf("%s.%d", prefix, i))
+		if err != nil {
+			return i
 		}
 	}
-	panic("Ran out of old version numbers!")
+	panic("Ran out of file version numbers!")
 }
 
 func pagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -166,6 +253,27 @@ func pagesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(list)
 	render(w, "pages.html", list)
+}
+
+type deletedPage struct {
+	Page  string
+	Mtime string
+}
+
+func deletedHandler(w http.ResponseWriter, r *http.Request) {
+	list, err := filepath.Glob("deleted/[a-zA-Z]*")
+	if err != nil {
+		panic(err)
+	}
+	sort.Strings(list)
+	var list2 []*deletedPage
+	for _, path := range list {
+		if !strings.ContainsRune(path, '.') {
+			m := fileMtime(path)
+			list2 = append(list2, &deletedPage{Page: path[8:], Mtime: m})
+		}
+	}
+	render(w, "deleted.html", list2)
 }
 
 type pageVersion struct {
@@ -391,6 +499,7 @@ func render(w http.ResponseWriter, templateName string, data interface{}) {
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 	err := views.ExecuteTemplate(w, templateName, data)
 	if err != nil {
+fmt.Printf("error != nil executing template %s on %v\n", templateName, data)
 		serverError(w, err)
 	}
 }
