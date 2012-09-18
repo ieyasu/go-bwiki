@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>{{.Title}} - BWiki</title>
+    <title>{{if .IsHome}}Home{{else}}{{.Title}}{{end}} - {{.WikiName}}</title>
     <link rel="stylesheet" href="/pub/wiki.css" />
   </head>
   <body>

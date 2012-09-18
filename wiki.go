@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/kless/goconfig/config"
 	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
@@ -19,7 +20,11 @@ import (
 	"time"
 )
 
+// 'config' vars
+var wikiName string
+
 type pageInfo struct {
+	WikiName string
 	Page    string
 	Ver     string
 	Title   string
@@ -31,6 +36,11 @@ type pageInfo struct {
 var views *template.Template
 
 func main() {
+	c, err := config.ReadDefault("wiki.ini")
+	panicIni(err)
+	wikiName, err = c.String("wiki", "name")
+	panicIni(err)
+
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
 
 	http.HandleFunc("/", rootHandler)
@@ -48,6 +58,13 @@ func main() {
 	log.Fatal(http.ListenAndServe("0.0.0.0:8081", nil))
 }
 
+func panicIni(err error) {
+	if err != nil {
+		fmt.Printf("Error reading wiki.ini!")
+		panic(err)
+	}
+}
+
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
 	img, _ := ioutil.ReadFile("pub/favicon.ico")
 	w.Write(img)
@@ -57,7 +74,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	page := r.URL.Path[1:]
 	v := verParam(r)
 	if len(page) == 0 {
-		renderPage(w, "home", v, "BWiki")
+		renderPage(w, "home", v, wikiName)
 	} else if isPageName(page) {
 		if page == "home" {
 			var u string
@@ -184,7 +201,7 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 	v := verParam(r)
 	page := r.URL.Path[6:]
 	bytes, _ := readPage(page, v, w)
-	pi := &pageInfo{Page: page, IsHome: (page == "home")}
+	pi := &pageInfo{WikiName: wikiName, Page: page, IsHome: (page == "home")}
 	pi.Content = string(bytes)
 	render(w, "edit.html", pi)
 }
@@ -249,6 +266,11 @@ func nextFileNum(prefix string) int {
 	panic("Ran out of file version numbers!")
 }
 
+type pageList struct {
+	WikiName string
+	List []string
+}
+
 func pagesHandler(w http.ResponseWriter, r *http.Request) {
 	list, err := filepath.Glob("pages/[a-zA-Z]*")
 	if err != nil {
@@ -258,12 +280,18 @@ func pagesHandler(w http.ResponseWriter, r *http.Request) {
 		list[i] = s[6:]
 	}
 	sort.Strings(list)
-	render(w, "pages.html", list)
+	pl := &pageList{WikiName: wikiName, List: list}
+	render(w, "pages.html", pl)
 }
 
 type deletedPage struct {
 	Page  string
 	Mtime string
+}
+
+type deletedPages struct {
+	WikiName string
+	List []*deletedPage
 }
 
 func deletedHandler(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +307,8 @@ func deletedHandler(w http.ResponseWriter, r *http.Request) {
 			list2 = append(list2, &deletedPage{Page: path[8:], Mtime: m})
 		}
 	}
-	render(w, "deleted.html", list2)
+	dp := &deletedPages{WikiName: wikiName, List: list2}
+	render(w, "deleted.html", dp)
 }
 
 type pageVersion struct {
@@ -288,6 +317,7 @@ type pageVersion struct {
 }
 
 type versionInfo struct {
+	WikiName string
 	Page     string
 	Mtime    string
 	Versions []*pageVersion
@@ -301,7 +331,7 @@ func versionsHandler(w http.ResponseWriter, r *http.Request) {
 			pageNotFound(w)
 			return
 		}
-		vi := versionInfo{Page: page, Mtime: m}
+		vi := versionInfo{WikiName: wikiName, Page: page, Mtime: m}
 		vi.Versions = listPageVersions(page)
 		render(w, "versions.html", vi)
 	} else {
@@ -358,13 +388,14 @@ func (h hitSlice) Swap(i, j int) {
 }
 
 type search struct {
+	WikiName string
 	Q    string
 	Hits hitSlice
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.FormValue("q")
-	res := &search{Q: q}
+	res := &search{WikiName: wikiName, Q: q}
 	argv := []string{"-ci"}
 	for _, aq := range strings.Fields(q) {
 		argv = append(argv, "-e", aq)
@@ -401,7 +432,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 func renderPage(w http.ResponseWriter, page string, version int, title string) {
 	if bytes, err := readPage(page, version, w); err == nil {
-		pi := &pageInfo{Page: page, Title: title}
+		pi := &pageInfo{WikiName: wikiName, Page: page, Title: title, IsHome: (page == "home")}
 		if version > 0 {
 			pi.Ver = fmt.Sprintf("?ver=%d", version)
 		}

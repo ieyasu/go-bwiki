@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>All Wiki Pages - BWiki</title>
+    <title>All Wiki Pages - {{.WikiName}}</title>
     <link rel="stylesheet" href="/pub/wiki.css" />
   </head>
   <body>
@@ -21,7 +21,7 @@
       <h1>All Wiki Pages</h1>
 
       <ul>
-      {{range .}}
+      {{range .List}}
         <li><a href="/{{.}}">{{.}}</a> &emsp; <a href="/edit/{{.}}">edit</a></li>
       {{end}}
       </ul>
