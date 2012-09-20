@@ -39,3 +39,7 @@ div.beloweditor {
 a#toggle {
    float: right;
 }
+
+#help {
+   margin: 1em;
+}
