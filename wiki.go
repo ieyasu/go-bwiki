@@ -458,7 +458,7 @@ func linkWikiWords(content []byte) []byte {
 		}
 		sing, plu := splitPlural(string(word))
 		if fileExists(pageFile(sing, -1)) {
-			return []byte(linkWikiPage(string(sing)) + plu)
+			return []byte(linkWikiPage2(string(sing), string(word)))
 		}
 		link := sing + "<a href=\"/edit/" + sing + "\">?</a>"
 		if len(plu) > 0 {
@@ -470,6 +470,10 @@ func linkWikiWords(content []byte) []byte {
 
 func linkWikiPage(page string) string {
 	return "<a href=\"/" + page + "\">" + page + "</a>"
+}
+
+func linkWikiPage2(page, linktext string) string {
+	return "<a href=\"/" + page + "\">" + linktext + "</a>"
 }
 
 func fileExists(path string) bool {
