@@ -25,12 +25,12 @@ var wikiName string
 
 type pageInfo struct {
 	WikiName string
-	Page    string
-	Ver     string
-	Title   string
-	Content string
-	Mtime   string
-	IsHome  bool
+	Page     string
+	Ver      string
+	Title    string
+	Content  string
+	Mtime    string
+	IsHome   bool
 }
 
 var views *template.Template
@@ -57,6 +57,7 @@ func main() {
 	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
+	log.Printf("Serving wiki pages...\n")
 	log.Fatal(http.ListenAndServe(servAddr, nil))
 }
 
@@ -106,6 +107,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deletePage(page)
+		// XXX log page deletion
 		w.Write([]byte("/"))
 	} else {
 		invalidPageName(w)
@@ -229,6 +231,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 			// write new version
 			err := ioutil.WriteFile(pageFile(page, -1), content, 0644)
 			if err == nil {
+				// XXX log the fact a page was edited, ip addy, etc
 			} else {
 				http.Error(w, "Error writing wiki page: "+err.Error(),
 					http.StatusInternalServerError)
@@ -270,7 +273,7 @@ func nextFileNum(prefix string) int {
 
 type pageList struct {
 	WikiName string
-	List []string
+	List     []string
 }
 
 func pagesHandler(w http.ResponseWriter, r *http.Request) {
@@ -293,7 +296,7 @@ type deletedPage struct {
 
 type deletedPages struct {
 	WikiName string
-	List []*deletedPage
+	List     []*deletedPage
 }
 
 func deletedHandler(w http.ResponseWriter, r *http.Request) {
@@ -391,8 +394,8 @@ func (h hitSlice) Swap(i, j int) {
 
 type search struct {
 	WikiName string
-	Q    string
-	Hits hitSlice
+	Q        string
+	Hits     hitSlice
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -448,32 +451,76 @@ func renderPage(w http.ResponseWriter, page string, version int, title string) {
 	}
 }
 
-var wikiWordPat *regexp.Regexp = regexp.MustCompile(
-	"\\b(?:[A-Z](?:[0-9a-z]*[a-z][0-9a-z]*)?){2,}\\b")
+var pageLinkPat *regexp.Regexp = regexp.MustCompile(
+	"(?:\\[\\[ *(\\? *)?(?:([^|\\]]+) *\\| *)?([a-zA-Z][\\w -]*) *\\]\\])|" +
+		"(?:\\b((?:[A-Z](?:[0-9a-z]*[a-z][0-9a-z]*)?){2,})\\b)")
 
 func linkWikiWords(content []byte) []byte {
-	return wikiWordPat.ReplaceAllFunc(content, func(word []byte) []byte {
-		if fileExists(pageFile(string(word), -1)) {
-			return []byte(linkWikiPage(string(word)))
+	buf := make([]byte, 0, len(content)*5/4)
+	for {
+		m := pageLinkPat.FindSubmatchIndex(content)
+		if m == nil {
+			buf = append(buf, content[0:]...)
+			break // no more matches
 		}
-		sing, plu := splitPlural(string(word))
-		if fileExists(pageFile(sing, -1)) {
-			return []byte(linkWikiPage2(string(sing), string(word)))
+		buf = append(buf, content[0:m[0]]...)
+		// m[0] - start of [[, m[1] - after ]]
+		// m[2],m[3] - ! (turning off linking)
+		// m[4],m[5] - link text
+		// m[6],m[7] - page
+		// m[8],m[9] - WikiWord
+		if m[2] > 0 { // don't link
+			buf = append(buf, content[m[6]:m[7]]...)
+		} else if m[6] > 0 { // double-bracketed page link
+			page := content[m[6]:m[7]]
+			var linktext []byte
+			if m[4] > 0 { // replacement link text
+				linktext = content[m[4]:m[5]]
+			} else {
+				linktext = page
+			}
+			page = bytes.Replace(page, []byte(" "), []byte("-"), -1)
+			buf = linkWikiPage(buf, page, linktext)
+		} else { // WikiWord
+			page := content[m[8]:m[9]]
+			buf = linkWikiPage(buf, page, nil)
 		}
-		link := sing + "<a href=\"/edit/" + sing + "\">?</a>"
-		if len(plu) > 0 {
-			link += plu + "<a href=\"/edit/" + string(word) + "\">?</a>"
-		}
-		return []byte(link)
-	})
+
+		content = content[m[1]:]
+	}
+	return buf
 }
 
-func linkWikiPage(page string) string {
-	return "<a href=\"/" + page + "\">" + page + "</a>"
-}
+func linkWikiPage(buf []byte, page []byte, linktext []byte) []byte {
+	var deplu bool
+	if linktext == nil {
+		linktext = page
+		deplu = true
+	}
+	var pageExists bool = fileExists(pageFile(string(page), -1))
+	if !pageExists && deplu {
+		page = depluralize(page)
+		pageExists = fileExists(pageFile(string(page), -1))
+	}
+	title := page
+	buf = append(buf, []byte("<a href=\"/")...)
+	if !pageExists {
+		title = make([]byte, 0, len(page)+22)
+		title = append(title, page...)
+		title = append(title, []byte(" (page does not exist)")...)
 
-func linkWikiPage2(page, linktext string) string {
-	return "<a href=\"/" + page + "\">" + linktext + "</a>"
+		buf = append(buf, []byte("edit/")...)
+	}
+	buf = append(buf, page...)
+	buf = append(buf, []byte("\" title=\"")...)
+	buf = append(buf, title...)
+	buf = append(buf, '"')
+	if !pageExists {
+		buf = append(buf, []byte(" class=\"new\"")...)
+	}
+	buf = append(buf, '>')
+	buf = append(buf, linktext...)
+	return append(buf, []byte("</a>")...)
 }
 
 func fileExists(path string) bool {
@@ -487,24 +534,25 @@ var endOES *regexp.Regexp = regexp.MustCompile("(?i)\\woes$")
 var endIES *regexp.Regexp = regexp.MustCompile("(?i)\\wies$")
 var endS *regexp.Regexp = regexp.MustCompile("(?i)\\ws$")
 
-func splitPlural(word string) (string, string) {
+func depluralize(word []byte) []byte {
+	n := len(word)
 	var i int
-	if endES.MatchString(word) {
-		i = -2 // end in s, z, ch, sh, x -> remove es
-	} else if endOS.MatchString(word) {
+	if endES.Match(word) {
+		i = -2 // end in (s, z, ch, sh, x)es -> remove es
+	} else if endOS.Match(word) {
 		i = -1 // end in os -> o
-	} else if endOES.MatchString(word) {
+	} else if endOES.Match(word) {
 		i = -2 // end in oes -> o
-	} else if endIES.MatchString(word) {
-		i = -3 // end in ies -> y
-	} else if endS.MatchString(word) {
+	} else if endIES.Match(word) {
+		buf := make([]byte, 0, n-2)
+		buf = append(buf, word[0:n-3]...)
+		return append(buf, 'y') // end in ies -> y
+	} else if endS.Match(word) {
 		i = -1 // simple plural -> remove s
 	} else {
-		return word, "" // not a plural
+		return word // not a plural
 	}
-	n := len(word)
-	i += n
-	return word[0:i], word[i:]
+	return word[0 : i+n]
 }
 
 func pageNotFound(w http.ResponseWriter) {
@@ -524,7 +572,7 @@ func invalidPageName(w http.ResponseWriter) {
 	http.Error(w, "Invalid page name", http.StatusForbidden)
 }
 
-var pageFilePat *regexp.Regexp = regexp.MustCompile("^[a-zA-Z]\\w*$")
+var pageFilePat *regexp.Regexp = regexp.MustCompile("^[a-zA-Z][\\w-]*$")
 
 func isPageName(page string) bool {
 	return pageFilePat.MatchString(page)

@@ -1,0 +1,1 @@
+Let's test the x[[Wiki Link]]x syntax.  Let's not link [[?NASA]] this time.  We can also [[Replace the link text|a page with spaces]] to the page. But WikiWords must still link the way we expect a WikiWord to.  And link NonExistent [[wiki pages|some-thing]] correctly (i.e. with 'new' style links) including PluralNonexistants and MyCandies.

@@ -1,6 +1,10 @@
 body {
 }
 
+a.new {
+   color: #990000;
+}
+
 form.search {
    margin-top: 0.5em;
    width: 15em;
