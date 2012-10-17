@@ -19,12 +19,19 @@
         if (helpVisible) {
           $("#help").css("display", "none");
           $("#toggle").text("Formatting Help");
+          document.cookie = "visHelp=f; max-age=2592000; path=/edit"
         } else {
           $("#help").css("display", "block");
           $("#toggle").text("Hide Help");
+          document.cookie = "visHelp=t; max-age=2592000; path=/edit"
         }
         helpVisible = !helpVisible;
       }
+      $(document).ready(function() {
+        if (document.cookie.indexOf("visHelp=t") >= 0) {
+          toggleHelp();
+        }
+      });
       function deletePage() {
         if (confirm("Are you sure you want to delete this page?")) {
           $.post("/delete/{{.Page}}", function(data) {
