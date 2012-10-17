@@ -3,4 +3,4 @@ SRC="$(pwd)/$(echo $BASH_SOURCE | sed 's/^\.\///')"
 WIKI_ROOT=`dirname $SRC`
 cd $WIKI_ROOT
 echo "in $(pwd), starting wiki..."
-./go-bwiki &>> log
+exec ./go-bwiki &>> log
