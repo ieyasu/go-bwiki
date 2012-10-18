@@ -22,6 +22,7 @@ import (
 
 // 'config' vars
 var wikiName string
+var inDevMode bool
 
 type pageInfo struct {
 	WikiName string
@@ -41,6 +42,8 @@ func main() {
 	wikiName, err = c.String("wiki", "name")
 	panicIni(err)
 	servAddr, err := c.String("wiki", "serv_addr")
+	panicIni(err)
+	inDevMode, err = c.Bool("wiki", "dev_mode")
 	panicIni(err)
 
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
@@ -491,6 +494,8 @@ func linkWikiWords(content []byte) []byte {
 	return buf
 }
 
+// Normally wiki pages are singular, so use the depluralized version unless
+// the page exists as is.
 func linkWikiPage(buf []byte, page []byte, linktext []byte) []byte {
 	var deplu bool
 	if linktext == nil {
@@ -586,8 +591,9 @@ func pageFile(page string, version int) string {
 }
 
 func render(w http.ResponseWriter, templateName string, data interface{}) {
-	// XXX remove re-parsing line after done with inital dev
-	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
+	if inDevMode {
+		views = template.Must(template.ParseGlob("views/[a-z]*.html"))
+	}
 	err := views.ExecuteTemplate(w, templateName, data)
 	if err != nil {
 		serverError(w, err)
