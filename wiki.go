@@ -217,8 +217,7 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 
 func previewHandler(w http.ResponseWriter, r *http.Request) {
 	content := r.FormValue("content")
-	md := blackfriday.MarkdownCommon(linkWikiWords([]byte(content)))
-	w.Write(md)
+	w.Write(formatPage([]byte(content)))
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
@@ -441,19 +440,183 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderPage(w http.ResponseWriter, page string, version int, title string) {
-	if bytes, err := readPage(page, version, w); err == nil {
+	bytes, err := readPage(page, version, w)
+	if err == nil {
 		pi := &pageInfo{WikiName: wikiName, Page: page, Title: title, IsHome: (page == "home")}
 		if version > 0 {
 			pi.Ver = fmt.Sprintf("?ver=%d", version)
 		}
-		pi.Content = string(blackfriday.MarkdownCommon(linkWikiWords(bytes)))
+		pi.Content = string(formatPage(bytes))
 		if fi, err := os.Stat(pageFile(page, version)); err == nil {
 			pi.Mtime = fi.ModTime().Format(time.RFC1123)
 		}
 		render(w, "page.html", pi)
 	} else {
+		log.Printf("Error reading page '%s': %s\n", page, err.Error())
 		pageNotFound(w)
 	}
+}
+
+func formatPage(content []byte) []byte {
+	return parseTables(content)
+}
+
+func parseTables(content []byte) []byte {
+	out := make([]byte, 0, 32)
+	i := 0
+	for i < len(content) {
+		j := tableStart(content[i:])
+		if j < 0 {
+			break
+		}
+		j += i
+
+		if i < j { // format chunk before table
+			out = append(out, formatWikiChunk(content[i:j])...)
+		}
+		out = append(out, "<table class='wiki'>\n"...)
+		var k int
+		out, k = parseTableRows(out, content[j:])
+		out = append(out, "</table>\n"...)
+
+		i = j + k // XXX check for off-by-1
+	}
+
+	if i < len(content) {
+		out = append(out, content[i:]...)
+	}
+
+	return out
+}
+
+var tableStartPat *regexp.Regexp = regexp.MustCompile(
+	"(?:^|[\r\n])\\|[^\r\n|]*\\|")
+
+func tableStart(content []byte) int {
+	loc := tableStartPat.FindIndex(content)
+	if loc == nil {
+		return -1
+	} else if content[loc[0]] != '|' {
+		return loc[0] + 1
+	}
+	return loc[0]
+}
+
+func nextCellEnd(content []byte) int {
+	for i := 0; i < len(content); i++ {
+		switch content[i] {
+		case '|': return i
+		case '\r', '\n': return -1
+		}
+	}
+	return -1
+}
+
+func parseTableRows(out, content []byte) ([]byte, int) {
+	i := 0
+	for i < len(content) && content[i] == '|' { // each line/row
+		out = append(out, "  <tr>\n"...)
+
+		j := i
+		for j < len(content) {
+			j += 1
+			//k := bytes.IndexByte(content[j:], '|')
+			k := nextCellEnd(content[j:])
+			if k < 0 {
+				break // no more cells!
+			}
+			k += j
+			out = parseTableCell(out, content[j:k])
+			j = k
+			if content[k] != '|' {
+				fmt.Printf("not on a pipe at %d!\n", k)
+			}
+		}
+		out = append(out, "  </tr>\n"...)
+
+		// j is after last '|'; find newline
+		for ; j < len(content); j++ {
+			if !(content[j] == ' ' || content[j] == '\t') {
+				break
+			}
+		}
+		var newline bool = false
+		if content[j] == '\r' {
+			newline = true
+			j++
+		}
+		if content[j] == '\n' {
+			newline = true
+			j++
+		}
+		i = j
+		if !newline {
+			break
+		}
+	}
+	return out, i
+}
+
+func parseSpan(content []byte) ([]byte) {
+	j := 0
+	for ; j < len(content) && '0' <= content[j] && content[j] <= '9'; j++ {}
+	return content[0:j]
+}
+
+func parseTableCell(out, content []byte) []byte {
+	tag := "td"
+	
+	atts := make([]byte, 0)
+	i := 0
+	for ; i < len(content); i++ {
+		switch content[i] {
+		case '.': i++; goto endoptions
+		case '_': tag = "th"
+		case '<': atts = append(atts, " align='left'"...)
+		case '>': atts = append(atts, " align='right'"...)
+		case '=': atts = append(atts, " align='center'"...)
+		case '#': atts = append(atts, " align='justify'"...)
+		case '^': atts = append(atts, " valign='top'"...)
+		case '~': atts = append(atts, " valign='bottom'"...)
+		case '\\': // XXX parse colspan
+			if span := parseSpan(content[i+1:]); len(span) > 0 {
+				atts = append(atts, " colspan='"...)
+				atts = append(atts, span...)
+				atts = append(atts, '\'')
+				i += len(span)
+			}
+		case '/':  // XXX parse rowspan
+			if span := parseSpan(content[i+1:]); len(span) > 0 {
+				atts = append(atts, " rowspan='"...)
+				atts = append(atts, span...)
+				atts = append(atts, '\'')
+				i += len(span)
+			}
+		default: if i == 0 { goto endoptions }
+		}
+	}
+endoptions:
+
+	out = append(out, "    <"...)
+	out = append(out, tag...)
+	out = append(out, atts...)
+	out = append(out, ">\n      "...)
+
+	chunk := formatWikiChunk(bytes.TrimSpace(content[i:]))
+	if len(chunk) > 7 && bytes.Compare(chunk[0:3], []byte("<p>")) == 0 {
+		chunk = chunk[3:len(chunk)-5]
+	}
+	out = append(out, chunk...)
+
+	out = append(out, "\n    </"...)
+	out = append(out, tag...)
+	out = append(out, ">\n"...)
+
+	return out
+}
+
+func formatWikiChunk(content []byte) []byte {
+	return blackfriday.MarkdownCommon(linkWikiWords(content))
 }
 
 var pageLinkPat *regexp.Regexp = regexp.MustCompile(
