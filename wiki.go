@@ -628,9 +628,20 @@ func linkWikiWords(content []byte) []byte {
 	for {
 		m := pageLinkPat.FindSubmatchIndex(content)
 		if m == nil {
-			buf = append(buf, content[0:]...)
+			buf = append(buf, content...)
 			break // no more matches
 		}
+		i := bytes.LastIndexAny(content[:m[0]], "\r\n")
+		if i < 0 {
+			i = 0
+		} else {
+			i++
+		}
+		if bytes.Compare(content[i:i+4], []byte("    ")) == 0 {
+			buf = append(buf, content...)
+			break // don't link anything in a code block
+		}
+
 		buf = append(buf, content[0:m[0]]...)
 		// m[0] - start of [[, m[1] - after ]]
 		// m[2],m[3] - ! (turning off linking)
