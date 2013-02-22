@@ -45,8 +45,10 @@ func main() {
 	panicIni(err)
 	inDevMode, err = c.Bool("wiki", "dev_mode")
 	panicIni(err)
+	log.Printf("Read wiki.ini")
 
 	views = template.Must(template.ParseGlob("views/[a-z]*.html"))
+	log.Printf("Parsed page templates\n")
 
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/delete/", deleteHandler)
@@ -60,7 +62,7 @@ func main() {
 	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
-	log.Printf("Serving wiki pages...\n")
+	log.Printf("Serving wiki pages from %s...\n", servAddr)
 	log.Fatal(http.ListenAndServe(servAddr, nil))
 }
 
