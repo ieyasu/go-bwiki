@@ -481,9 +481,8 @@ func parseTables(content []byte) []byte {
 
 		i = j + k // XXX check for off-by-1
 	}
-
 	if i < len(content) {
-		out = append(out, content[i:]...)
+		out = append(out, formatWikiChunk(content[i:])...)
 	}
 
 	return out
