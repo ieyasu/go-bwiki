@@ -630,6 +630,8 @@ func linkWikiWords(content []byte) []byte {
 			buf = append(buf, content...)
 			break // no more matches
 		}
+
+		// don't link inside a code block--blackfriday can't handle it
 		i := bytes.LastIndexAny(content[:m[0]], "\r\n")
 		if i < 0 {
 			i = 0
@@ -638,7 +640,7 @@ func linkWikiWords(content []byte) []byte {
 		}
 		if bytes.Compare(content[i:i+4], []byte("    ")) == 0 {
 			buf = append(buf, content...)
-			break // don't link anything in a code block
+			break
 		}
 
 		buf = append(buf, content[0:m[0]]...)
@@ -661,12 +663,25 @@ func linkWikiWords(content []byte) []byte {
 			buf = linkWikiPage(buf, page, linktext)
 		} else { // WikiWord
 			page := content[m[8]:m[9]]
-			buf = linkWikiPage(buf, page, nil)
+			if allUpperCase(page) { // don't link acronyms
+				buf = append(buf, page...)
+			} else {
+				buf = linkWikiPage(buf, page, nil)
+			}
 		}
 
 		content = content[m[1]:]
 	}
 	return buf
+}
+
+func allUpperCase(word []byte) bool {
+	for i := 0; i < len(word); i++ {
+		if !('A' <= word[i] && word[i] <= 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 // Normally wiki pages are singular, so use the depluralized version unless
