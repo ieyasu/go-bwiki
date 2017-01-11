@@ -62,6 +62,7 @@ func main() {
 	http.HandleFunc("/search", searchHandler)
 	http.Handle("/pub/", http.StripPrefix("/pub/", http.FileServer(http.Dir("pub"))))
 	http.HandleFunc("/favicon.ico", faviconHandler)
+	http.HandleFunc("/robots.txt", robotsHandler)
 	log.Printf("Serving wiki pages from %s...\n", servAddr)
 	log.Fatal(http.ListenAndServe(servAddr, nil))
 }
@@ -74,8 +75,11 @@ func panicIni(err error) {
 }
 
 func faviconHandler(w http.ResponseWriter, r *http.Request) {
-	img, _ := ioutil.ReadFile("pub/favicon.ico")
-	w.Write(img)
+	http.ServeFile(w, r, "pub/favicon.ico")
+}
+
+func robotsHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "pub/robots.txt")
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
