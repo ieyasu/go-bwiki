@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/kless/goconfig/config"
+	"github.com/robfig/config"
 	"github.com/russross/blackfriday"
 	"io/ioutil"
 	"log"
