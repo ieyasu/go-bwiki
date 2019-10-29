@@ -1,7 +1,7 @@
 BWiki
 =====
 
-Re-implemented in Golang, it is a simple, get-the-job-done wiki meeting my own needs.  If it makes you happy too, great.  The syntax is Markdown, WikiWords become links, just like in [the original Wiki](http://c2.com/cgi/wiki).
+Re-implemented in Golang, this is a simple, get-the-job-done wiki meeting my own needs.  If it makes you happy too, great.  The syntax is Markdown, WikiWords become links, just like in [the original Wiki](//wiki.c2.com).
 
 Additionally, pages can be linked with [[...]] syntax:
 
